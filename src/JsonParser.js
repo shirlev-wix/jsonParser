@@ -1,61 +1,88 @@
 "use strict";
 
 function JsonObject(obj) {
-    if (typeof obj !== 'object'){
-        throw new Error('obj is not an Object!');
-    }
-    this.content = obj;
+  if (typeof obj !== 'object'){
+    throw new Error('obj is not an Object!');
+  }
+  this.content = obj;
 };
 
 JsonObject.prototype.getValue = function () {
-    return this.content;
+  return this.content;
 }
-
+JsonObject.prototype.toString = function () {
+  return '{' + this.getContentString() + '}'
+}
+JsonObject.prototype.getContentString = function () {
+  var first = true;
+  var result = '';
+  for(var key in this.content) {
+    if (this.content.hasOwnProperty(key)){
+      if (first){
+        first = false;
+      }else{
+        result += ', ';
+      }
+      result += '"' + key + '": ' + this.content[key].toString();
+    }
+  }
+  return result;
+}
 
 function JsonNumber(num) {
-    if (isNaN(num)){
-        throw new Error('int is not a Number!');
-    }
-    this.content = num;
+  if (isNaN(num)){
+    throw new Error('int is not a Number!');
+  }
+  this.content = num;
 };
-//JsonNumber.prototype = new JsonObject({});
 
 JsonNumber.prototype.getValue = function () {
-    return this.content;
+  return this.content;
+}
+JsonNumber.prototype.toString = function () {
+  return this.content.toString();
 }
 
-
 function JsonString(str) {
-    if (typeof str !== 'string'){
-        throw new Error('str is not a String!');
-    }
-    this.content = str;
+  if (typeof str !== 'string'){
+    throw new Error('str is not a String!');
+  }
+  this.content = str;
 };
 
 JsonString.prototype.getValue = function () {
-    return this.content;
+  return this.content;
+}
+JsonString.prototype.toString = function () {
+  return '"' + this.content + '"';
 }
 
 function JsonBoolean(bool) {
-    if (typeof bool !== 'boolean'){
-        throw new Error('bool is not a Boolean value!');
-    }
-    this.content = bool;
+  if (typeof bool !== 'boolean'){
+    throw new Error('bool is not a Boolean value!');
+  }
+  this.content = bool;
 };
 
 JsonBoolean.prototype.getValue = function () {
-    return this.content;
+  return this.content;
+}
+JsonBoolean.prototype.toString = function () {
+  return this.content.toString();
 }
 
 function JsonArray(arr) {
-    if (!Array.isArray(arr)){
-        throw new Error('arr is not an Array!');
-    }
-    this.content = arr;
+  if (!Array.isArray(arr)){
+    throw new Error('arr is not an Array!');
+  }
+  this.content = arr;
 };
 
 JsonArray.prototype.getValue = function () {
-    return this.content;
+  return this.content;
+}
+JsonArray.prototype.toString = function () {
+  return '[' + this.content.toString() + ']';
 }
 
 function JsonParser() {
@@ -64,74 +91,130 @@ function JsonParser() {
 
 
 JsonParser.prototype.parse = function (str) {
-    if (str === '{}'){
-        return JsonObject.empty();
-    }
-    var o = splitToObject(trimEdges(str.trim()));
-    return (new JsonObject(o));
+  return parseObject(str)
 };
+
+function parseObject(str) {
+  if (str === '{}'){
+    return JsonObject.empty();
+  }
+  var o = splitToObject(trimEdges(str.trim()).split(','));
+  return (new JsonObject(o));
+};
+
 JsonObject.empty = function () {
-    return new JsonObject({});
+  return new JsonObject({});
 };
 
 function trimEdges(str) {
-    return str.substr(1,str.length-2);
+  return str.substr(1,str.length-2);
 };
 
-function splitToObject (str) {
-    var pair = str.split(':')
-    var o = {};
-    o[trimEdges(pair[0].trim())] = convertByType(pair[1].trim());
-    return o;
+function extractProperty(member) {
+  var splitted = member.split(':');
+  var value = splitted.slice(1).join(':');
+  var key = splitted[0]
+//
+//  console.log("KEY:" + key);
+//  console.log("VALUE:" + value);
+  return [key,value];
+  //return member.split(':');
+}
+
+function propertyKey(property) {
+  return property[ 0].trim();
+}
+
+function propertyValue(property) {
+  return property[1].trim();
+}
+
+function splitToObject (splittedObject) {
+  var result = {};
+  var property;
+  for (var i = 0; i < splittedObject.length; i++){
+    var member = splittedObject[i].trim();
+    while ((i < splittedObject.length) && (!validParentheses(member))){
+      member += ',' + splittedObject[++i];
+    }
+    if (!validParentheses(member)){
+      throw new Error('Invalid object!');
+    }else{
+      property = extractProperty(member);
+      result[trimEdges(propertyKey(property))] = convertByType(propertyValue(property));
+    }
+  }
+  return result;
 };
 
+function isNumber(str) {
+  return !isNaN(Number(str));
+}
+function isObject(str) {
+  return containsEdges(str, '{', '}');
+}
+function parseString(str) {
+  return new JsonString(trimEdges(str));
+}
+function parseNumber(str) {
+  return new JsonNumber(Number(str));
+}
 function convertByType (str) {
-     //console.log(str);
-     if (isArrayString(str)){
-         return convertToArray(trimEdges(str).split(','));
-     }
-    if (isString(str)) return trimEdges(str);
-    return isNaN(Number(str))? convertToBoolean(str) : Number(str);
+  //console.log(str);
+  if (isArrayString(str))
+    return parseArray(trimEdges(str).split(','));
+  if (isString(str))
+    return parseString(str);
+  if (isNumber(str))
+    return parseNumber(str);
+  if (isObject(str)) {
+    return parseObject(str);
+    //return JsonObject.empty();
+  }
+
+  return parseBoolean(str);
 };
+
+
 function isArrayString (str) {
-    return containsEdges(str, '[',']');
+  return containsEdges(str, '[',']');
 };
 function isString (str) {
-    return containsEdges(str, '"', '"');
+  return containsEdges(str, '"', '"');
 };
 function containsEdges (str, left, right) {
-    return ((str.charAt(0) === left) &&
-        (str.charAt(str.length-1)) === right);
+  return ((str.charAt(0) === left) &&
+    (str.charAt(str.length-1)) === right);
 };
-function convertToArray (splittedMembers) {
-    console.log(splittedMembers);
-    var arr = [];
-    for (var i = 0; i < splittedMembers.length; i++){
-        var member = splittedMembers[i].trim();
-        while ((i < splittedMembers.length) && (!validSubString(member))){
-            member += ',' + splittedMembers[++i];
-        }
-        if (!validSubString(member)){
-            throw new Error('Invalid array!');
-        }else{
-            arr.push(convertByType(member));
-        }
+function parseArray (splittedMembers) {
+  //console.log(splittedMembers);
+  var arr = [];
+  for (var i = 0; i < splittedMembers.length; i++){
+    var member = splittedMembers[i].trim();
+    while ((i < splittedMembers.length) && (!validParentheses(member))){
+      member += ',' + splittedMembers[++i];
     }
-    return arr;
+    if (!validParentheses(member)){
+      throw new Error('Invalid array!');
+    }else{
+      arr.push(convertByType(member));
+    }
+  }
+  return new JsonArray(arr);
 };
 
-function convertToBoolean (str) {
-    return str === 'true';
+function parseBoolean (str) {
+  return new JsonBoolean(str === 'true');
 };
-function validSubString (str) {
-    for (var countCurl = 0, i = 0, countSqur = 0; i < str.length; i++){
-        switch (str[i]){
-            case ('['): { countSqur++ ; continue;};
-            case (']'): { countSqur--  ; continue;};
-            case ('{'): { countCurl++  ; continue;};
-            case ('}'): { countCurl--  ; continue;};
-            default: { continue; }
-        }
+function validParentheses (str) {
+  for (var countCurl = 0, i = 0, countSqur = 0; i < str.length; i++){
+    switch (str[i]){
+      case ('['): { countSqur++ ; continue;};
+      case (']'): { countSqur--  ; continue;};
+      case ('{'): { countCurl++  ; continue;};
+      case ('}'): { countCurl--  ; continue;};
+      default: { continue; }
     }
-    return (countCurl === 0) && (countSqur === 0);
+  }
+  return (countCurl === 0) && (countSqur === 0);
 };

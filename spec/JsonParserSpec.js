@@ -6,10 +6,10 @@ describe("JsonParser", function() {
         it("should throw an error when called with parameter other then Object", function() {
             expect(function() {new JsonObject()}).toThrow('obj is not an Object!');
         });
-        var jsonObject = new JsonObject({'a':3});
+        var jsonObject = new JsonObject({'a':new JsonNumber(3)});
 
         it("new JsonObject({'a':3}).getValue() should be equal to {a:3}", function() {
-            expect(jsonObject.getValue()).toEqual({'a':3});
+            expect(jsonObject.getValue()).toEqual({'a':new JsonNumber(3)});
         });
     });
 
@@ -78,43 +78,90 @@ describe("JsonParser", function() {
 
     describe("object with single number", function() {
         it("should generate a tree with one child a=3", function() {
-            expect(parser.parse('{"a":3}')).toEqual((new JsonObject({'a':3})));
+            expect(parser.parse('{"a":3}')).toEqual((new JsonObject({'a':new JsonNumber(3)})));
         });
         it("should generate a tree with one child a=4", function() {
-            expect(parser.parse('{"a":4}')).toEqual((new JsonObject({'a':4})));
+            expect(parser.parse('{"a":4}')).toEqual(new JsonObject({'a':new JsonNumber(4)}));
         });
         it("should generate a tree with one child b=3", function() {
-            expect(parser.parse('{"b":3}')).toEqual((new JsonObject({'b':3})));
+            expect(parser.parse('{"b":3}')).toEqual((new JsonObject({'b':new JsonNumber(3)})));
         });
 
     });
 
     describe("object with single String", function() {
         it("should generate a tree with one child a='shir'", function() {
-            expect(parser.parse('{"a":"string"}')).toEqual((new JsonObject({'a':"string"})));
+            expect(parser.parse('{"a":"string"}')).toEqual((new JsonObject({'a':new JsonString("string")})));
         });
     });
     describe("object with single Boolean", function() {
         it("should generate a tree with one child a=true", function() {
-            expect(parser.parse('{"a":true}')).toEqual((new JsonObject({'a':true})));
+            expect(parser.parse('{"a":true}')).toEqual((new JsonObject({'a':new JsonBoolean(true)})));
         });
     });
 
     describe("object with single Array", function() {
         it("should generate a tree with one child a=[1,2]", function() {
-            expect(parser.parse('{"a":[1,2]}')).toEqual((new JsonObject({'a':[1,2]})));
+            expect(parser.parse('{"a":[1,2]}')).toEqual((new JsonObject({'a':new JsonArray([new JsonNumber(1),new JsonNumber(2)])})));
         });
         it("should generate a tree with one child a=['str1','str2']", function() {
-            expect(parser.parse('{"a":["str1","str2"]}')).toEqual((new JsonObject({'a':['str1','str2']})));
+            expect(parser.parse('{"a":["str1","str2"]}')).toEqual((new JsonObject({'a':new JsonArray([new JsonString('str1'),new JsonString('str2')])})));
         });
         it("should generate a tree with one child a=[true,false]", function() {
-            expect(parser.parse('{"a":[true,false]}')).toEqual((new JsonObject({'a':[true,false]})));
+            expect(parser.parse('{"a":[true,false]}')).toEqual((new JsonObject({'a':new JsonArray([new JsonBoolean(true),new JsonBoolean(false)])})));
         });
         it("should generate a tree with one child a=[[arr11, arr12],[arr21, arr22]]", function() {
-            expect(parser.parse('{"a":[["arr11", "arr12"],["arr21", "arr22"]]}')).toEqual((new JsonObject({'a':[['arr11', 'arr12'],['arr21', 'arr22']]})));
+            expect(parser.parse('{"a":[["arr11", "arr12"],["arr21", "arr22"]]}')).toEqual((new JsonObject({'a':new JsonArray([new JsonArray([new JsonString('arr11'), new JsonString('arr12')]), new JsonArray([new JsonString('arr21'), new JsonString('arr22')])])})));
         });
-        it("should generate a tree with one child a=[[arr11, arr12],[arr21, arr22]]", function() {
-            expect(parser.parse('{"a":[["arr11", "arr12"], "arr11", "arr12"]],["arr11", "arr12"], "arr11", "arr12"]]]}')).toEqual((new JsonObject({'a':[["arr11", "arr12"], "arr11", "arr12"]],["arr11", "arr12"], 'arr22']]})));
+        it("should generate a tree with one child a=[[[arr11, arr12], [arr11, arr12]],[[arr11, arr12], [arr11, arr12]]]", function() {
+            expect(parser.parse('{"a":[[["arr11", "arr12"], ["arr11", "arr12"]],[["arr11", "arr12"], ["arr11", "arr12"]]]}')).toEqual(new JsonObject({'a':new JsonArray([new JsonArray([new JsonArray([new JsonString("arr11"), new JsonString("arr12")]),new JsonArray([new JsonString("arr11"), new JsonString("arr12")])]),new JsonArray([new JsonArray([new JsonString("arr11"), new JsonString("arr12")]),new JsonArray([new JsonString("arr11"), new JsonString("arr12")])])])}));
         });
     });
+
+    describe("object with multiple elements", function() {
+        it("should generate a tree with a child key-value for every element", function() {
+            expect(parser.parse('{"elem1":2, "elem2":"s", "elem3":false, "elem4":[1, 2, 3]}')).toEqual((new JsonObject({'elem1':new JsonNumber(2), 'elem2':new JsonString("s"), 'elem3':new JsonBoolean(false), 'elem4':new JsonArray([new JsonNumber(1), new JsonNumber(2), new JsonNumber(3)])})));
+        });
+//        it("should throw exception for invalid elements", function() {
+//            expect(parser.parse('{"elem1":2, "elem2":"s", "elem3":false, "elem4":[1, 2, 3]}')).toEqual((new JsonObject({'elem1':2, 'elem2':"s", 'elem3':false, 'elem4':[1, 2, 3]})));
+//        });
+    });
+    describe("object with nested objects", function() {
+        it("should ....", function() {
+            expect(parser.parse('{"elem":{}}')).toEqual((new JsonObject({'elem':new JsonObject.empty()})));
+        });
+        it("should 2....", function() {
+            expect(parser.parse('{"elem":{"innerElem":4}}')).toEqual((new JsonObject({'elem':new JsonObject({'innerElem':new JsonNumber(4)})})));
+        });
+    });
+
+  describe("toString()", function() {
+    it("for JsonNumber", function() {
+      expect((new JsonNumber(3).toString())).toEqual('3');
+    });
+    it("for JsonString", function() {
+      expect((new JsonString('I\'m a string!').toString())).toEqual('"I\'m a string!"');
+    });
+    it("for JsonBoolean", function() {
+      expect((new JsonBoolean(true).toString())).toEqual('true');
+    });
+    it("for JsonArray - empty array", function() {
+      expect((new JsonArray([]).toString())).toEqual('[]');
+    });
+    it("for JsonArray - array with single number", function() {
+      expect((new JsonArray([new JsonNumber(2)]).toString())).toEqual('[2]');
+    });
+    it("for JsonObject - empty JsonObject", function() {
+      expect((new JsonObject({}).toString())).toEqual('{}');
+    });
+    it("for JsonObject - JsonObject with number", function() {
+      expect((new JsonObject({"a": new JsonNumber(3)}).toString())).toEqual('{"a": 3}');
+    });
+    it("for JsonObject - multiple members", function() {
+      expect((new JsonObject({'elem1':new JsonNumber(2), 'elem2':new JsonString("s"), 'elem3':new JsonBoolean(false), 'elem4':new JsonArray([new JsonNumber(1), new JsonNumber(2), new JsonNumber(3)])}).toString())).toEqual('{"elem1": 2, "elem2": "s", "elem3": false, "elem4": [1,2,3]}');
+    });
+    it("for JsonObject - nested object", function() {
+      expect((new JsonObject({'elem':new JsonObject({'innerElem':new JsonNumber(4)})})).toString()).toEqual('{"elem": {"innerElem": 4}}');
+    });
+  });
 });
