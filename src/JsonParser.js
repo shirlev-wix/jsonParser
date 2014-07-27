@@ -129,9 +129,12 @@ function propertyValue(property) {
   return property[1].trim();
 }
 
+function addValidProperty(member, result) {
+  var property = extractProperty(member);
+  result[trimEdges(propertyKey(property))] = convertByType(propertyValue(property));
+}
 function splitToObject (splittedObject) {
   var result = {};
-  var property;
   for (var i = 0; i < splittedObject.length; i++){
     var member = splittedObject[i].trim();
     while ((i < splittedObject.length) && (!validParentheses(member))){
@@ -140,8 +143,26 @@ function splitToObject (splittedObject) {
     if (!validParentheses(member)){
       throw new Error('Invalid object!');
     }else{
-      property = extractProperty(member);
-      result[trimEdges(propertyKey(property))] = convertByType(propertyValue(property));
+      addValidProperty(member, result);
+    }
+  }
+//  return helper(splittedObject, result, 'Invalid object!', addValidProperty())
+  return result;
+};
+
+function addValidMember(member) {
+  arr.push(convertByType(member));
+}
+function helper (splitted, result, errorMsg, addToResult) {
+  for (var i = 0; i < splitted.length; i++){
+    var member = splitted[i].trim();
+    while ((i < splitted.length) && (!validParentheses(member))){
+      member += ',' + splitted[++i];
+    }
+    if (!validParentheses(member)){
+      throw new Error(errorMsg);
+    }else{
+      addToResult(member, result);
     }
   }
   return result;
@@ -188,7 +209,7 @@ function containsEdges (str, left, right) {
 };
 function parseArray (splittedMembers) {
   //console.log(splittedMembers);
-  var arr = [];
+  var result = [];
   for (var i = 0; i < splittedMembers.length; i++){
     var member = splittedMembers[i].trim();
     while ((i < splittedMembers.length) && (!validParentheses(member))){
@@ -197,10 +218,10 @@ function parseArray (splittedMembers) {
     if (!validParentheses(member)){
       throw new Error('Invalid array!');
     }else{
-      arr.push(convertByType(member));
+      result.push(convertByType(member));
     }
   }
-  return new JsonArray(arr);
+  return new JsonArray(result);
 };
 
 function parseBoolean (str) {
